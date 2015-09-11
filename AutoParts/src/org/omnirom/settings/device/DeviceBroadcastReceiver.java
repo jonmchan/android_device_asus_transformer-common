@@ -146,7 +146,7 @@ public class DeviceBroadcastReceiver extends BroadcastReceiver {
                 break;
 
             case KeyHandler.ASUSDEC_SCREENSHOT:
-                title = ctx.getString(R.string.kp_screenshot);
+                //title = ctx.getString(R.string.kp_screenshot);
                 break;
 
             case KeyHandler.ASUSDEC_EXPLORER:

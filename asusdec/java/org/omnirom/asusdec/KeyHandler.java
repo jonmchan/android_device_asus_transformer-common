@@ -33,6 +33,8 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.UserHandle;
+import android.provider.MediaStore;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.util.Log;
@@ -188,7 +190,8 @@ public final class KeyHandler implements DeviceKeyHandler {
                 toggleAutoBrightness();
                 break;
             case SCANCODE_SCREENSHOT:
-                takeScreenshot();
+//                takeScreenshot();
+                launchCamera();
                 break;
             case SCANCODE_EXPLORER:
                 launchExplorer();
@@ -374,6 +377,13 @@ public final class KeyHandler implements DeviceKeyHandler {
         } catch (ActivityNotFoundException ex) {
             Slog.e(TAG, "Could not launch settings intent", ex);
         }
+    }
+
+    private void launchCamera() {
+        //Intent intent = new Intent(Intent.ACTION_CAMERA_BUTTON, null);
+        Intent intent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA);
+        mContext.startActivityAsUser(intent, UserHandle.CURRENT_OR_SELF);
+
     }
 
     private void toggleAudioMute() {
