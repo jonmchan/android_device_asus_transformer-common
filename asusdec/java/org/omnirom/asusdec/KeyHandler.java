@@ -40,6 +40,7 @@ import android.provider.Settings.SettingNotFoundException;
 import android.util.Log;
 import android.util.Slog;
 import android.view.KeyEvent;
+import android.hardware.camera2.CameraManager;
 
 import com.android.internal.os.DeviceKeyHandler;
 
@@ -109,6 +110,7 @@ public final class KeyHandler implements DeviceKeyHandler {
     private AudioManager mAudioManager;
     private BluetoothAdapter mBluetoothAdapter;
     private IPowerManager mPowerManager;
+    private boolean cameraInUse = false;
 
     static {
         AsusdecNative.loadAsusdecLib();
@@ -138,6 +140,19 @@ public final class KeyHandler implements DeviceKeyHandler {
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_DOCK_EVENT);
         context.registerReceiver(mDockReceiver, filter);
+
+        // Figure out if Camera is Available or Not
+	Log.d(TAG, "Registering Camera Availability Callback");
+        CameraManager cam_manager = (CameraManager) mContext.getSystemService(Context.CAMERA_SERVICE);
+
+        // Hack to fix https://code.google.com/p/android/issues/detail?id=164769 - will be fixed in future version android > 5.1
+        try {
+            cam_manager.getCameraIdList(); 
+        } catch(android.hardware.camera2.CameraAccessException e) {
+	    Log.d(TAG, "We don't care to do anything if the camera cannot be accessed.");
+        }
+        
+        cam_manager.registerAvailabilityCallback(camAvailCallback, mHandler);
     }
 
     BroadcastReceiver mDockReceiver = new BroadcastReceiver() {
@@ -149,6 +164,25 @@ public final class KeyHandler implements DeviceKeyHandler {
                     nativeToggleTouchpad(mTouchpadEnabled);
                 }
             }
+        }
+    };
+
+    private final CameraManager.AvailabilityCallback camAvailCallback = new CameraManager.AvailabilityCallback() {
+        @Override
+        public void onCameraAvailable(String cameraId) {
+            synchronized (mScreenshotLock) { 
+                cameraInUse=false;
+                //Log.d(TAG, "notified that camera is not in use.");
+            }
+        }
+
+        @Override
+        public void onCameraUnavailable(String cameraId) {
+            synchronized (mScreenshotLock) { 
+                cameraInUse=true;
+                //Log.d(TAG, "notified that camera is in use.");
+            }
+
         }
     };
 
@@ -380,8 +414,14 @@ public final class KeyHandler implements DeviceKeyHandler {
     }
 
     private void launchCamera() {
-        //Intent intent = new Intent(Intent.ACTION_CAMERA_BUTTON, null);
-        Intent intent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA);
+        Intent intent = null;
+        if (cameraInUse) {
+            Log.d(TAG, "Camera is in use - sending camera action button.");
+            intent = new Intent(Intent.ACTION_CAMERA_BUTTON, null);
+        } else {
+            Log.d(TAG, "Camera is not in use - launching camera app.");
+            intent = new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA);
+        }
         mContext.startActivityAsUser(intent, UserHandle.CURRENT_OR_SELF);
 
     }
